@@ -8,6 +8,7 @@ import com.example.querydsl.repo.ShopRepository;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import com.querydsl.core.QueryResults;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -78,6 +79,105 @@ public class QuerydslQueryTests {
         ));
     }
 
+    @Test
+    public void fetch() {
+        // fetch(): 단순하게 전체 조회
+        List<Item> foundList = queryFactory
+                // SELECT FROM 절
+                .selectFrom(item)
+                // 결과를 리스트 형태로 조회
+                .fetch();
+        assertEquals(6, foundList.size());
+
+        // fetchOne(): 하나만 조회하려고 시도
+        Item found = queryFactory
+                .selectFrom(item)
+                .where(item.id.eq(1L))
+                // 하나만 조회
+                .fetchOne();
+        assertEquals(1L, found.getId());
+
+        found = queryFactory
+                .selectFrom(item)
+                .where(item.id.eq(0L))
+                // 없을 경우 null
+                .fetchOne();
+        assertNull(found);
+
+        assertThrows(Exception.class, () -> {
+            queryFactory.selectFrom(item)
+                    // 2개 이상일 경우 Exception
+                    .fetchOne();
+        });
+
+        // fetchFirst(): 첫번째 결과 또는 null
+        found = queryFactory
+                .selectFrom(item)
+                // LIMIT 1 -> fetchOne();
+                .fetchFirst();
+        assertNotNull(found);
+
+        // offset limit
+        foundList = queryFactory
+                .selectFrom(item)
+                .offset(3)
+                .limit(2)
+                .fetch();
+        for (Item find: foundList) {
+            System.out.println(find.getId());
+        }
+
+        // fetchCount(): 결과의 갯수 반환 (deprecated)
+        long count = queryFactory
+                .selectFrom(item)
+                .fetchCount();
+        assertEquals(6, count);
+
+        // fetchResults(): 결과 및 count + offset + limit 정보 반환 (deprecated)
+        QueryResults<Item> results = queryFactory
+                .selectFrom(item)
+                .offset(3)
+                .limit(2)
+                .fetchResults();
+        System.out.println(results.getTotal());
+        System.out.println(results.getOffset());
+        System.out.println(results.getLimit());
+        // 실제 내용은 getResults()
+        foundList = results.getResults();
+    }
+
+    @Test
+    public void sort() {
+        itemRepository.saveAll(List.of(
+                Item.builder()
+                        .name("itemF")
+                        .price(6000)
+                        .stock(40)
+                        .build(),
+                Item.builder()
+                        .price(6000)
+                        .stock(40)
+                        .build())
+        );
+        List<Item> foundList = queryFactory
+                // SELECT i FROM Item i
+                .selectFrom(item)
+                // item.(속성).(순서)를 ORDER BY 넣을 순서대로
+                // ORDER BY i.price ASC
+                .orderBy(
+                        // item.price asc
+                        item.price.asc(),
+                        item.stock.desc(),
+                        // null이 먼저냐 나중이냐
+                        item.name.asc().nullsLast()
+//                        item.name.asc().nullsFirst()
+                )
+                .fetch();
+
+        for (Item found: foundList) {
+            System.out.printf("%s: %d (%d)%n", found.getName(), found.getPrice(), found.getStock());
+        }
+    }
 
 
 }
