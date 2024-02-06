@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDateTime;
 
 import java.util.List;
 
@@ -179,5 +180,59 @@ public class QuerydslQueryTests {
         }
     }
 
+    @Test
+    public void where() {
+        // item.(속성).(조건)
+        // equals ( = )
+        item.name.eq("itemA");
+        // not equals ( != )
+        item.name.ne("itemB");
+        // equals -> not (!( = ))
+        item.name.eq("itemC").not();
+
+        // is null
+        item.name.isNull();
+        // is not null
+        item.name.isNotNull();
+        item.name.isNotEmpty();
+
+        // < <= >= >
+        item.price.lt(6000);
+        item.price.loe(6000);
+        item.price.goe(8000);
+        item.price.gt(7000);
+
+        item.price.between(5000, 10000);
+        item.price.in(5000, 6000, 7000, 8000);
+
+        // like, contains, startsWith, endsWith
+        // like는 SQL 문법을 따른다.
+        item.name.like("%item_");
+        // contains: arg -> %arg%
+        item.name.contains("item");
+        // startsWith, endsWith -> arg%, %arg
+        item.name.startsWith("item");
+        item.name.endsWith("A");
+
+        // 시간 관련
+        // 지금으로부터 5일전 보다 이후
+        item.createdAt.after(LocalDateTime.now().minusDays(5));
+        // 지금으로부터 5일전 보다 이전
+        item.createdAt.before(LocalDateTime.now().minusDays(5));
+
+        List<Item> foundItems = queryFactory
+                .selectFrom(item)
+                // where에 복수개 넣어주면, 전부 만족 (AND로 엮임)
+                .where(
+                        item.name.isNotNull(),
+                        item.price.lt(8000),
+                        item.stock.gt(20)
+                )
+                .fetch();
+
+        for (Item found: foundItems) {
+            System.out.printf("%s: %d (%d)%n", found.getName(), found.getPrice(), found.getStock());
+        }
+    }
 
 }
