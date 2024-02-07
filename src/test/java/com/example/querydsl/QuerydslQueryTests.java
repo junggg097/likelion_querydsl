@@ -235,4 +235,52 @@ public class QuerydslQueryTests {
         }
     }
 
+
+    @Test
+    public void andOr() {
+        List<Item> foundItems = queryFactory
+                .selectFrom(item)
+                .fetch();
+
+        for (Item found: foundItems) {
+            System.out.println(found);
+        }
+
+        foundItems = queryFactory
+                .selectFrom(item)
+                // 가격이 6000 이하 또는 9000 이상
+                // .and() 또는 .or()를 연쇄 호출할 수 있다. (method chaining)
+                .where(
+                        // [{item.price <= 6000
+                        item.price.loe(6000)
+                                // OR (item.price >= 9000)}
+                                .or(item.price.goe(9000))
+                                // OR (item.stock in (20, 30, 40)]
+                                .or(item.stock.in(20, 30, 40))
+                                // AND item.name is not null
+                                .and(item.name.isNotNull())
+                )
+                .fetch();
+
+        for (Item found: foundItems) {
+            System.out.println(found);
+        }
+
+        foundItems = queryFactory
+                .selectFrom(item)
+                // 가격이 6000 이하 또는 9000 이상
+                // 그리고
+                // 재고가 40 미만 또는 60 초과
+                .where(
+                        item.price.loe(6000).or(item.price.goe(9000)),
+                        item.stock.lt(40).or(item.stock.gt(60))
+                )
+                .fetch();
+
+        for (Item found: foundItems) {
+            System.out.println(found);
+        }
+    }
+
+
 }

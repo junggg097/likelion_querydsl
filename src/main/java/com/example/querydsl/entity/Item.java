@@ -20,4 +20,15 @@ public class Item extends BaseEntity{
 
     @ManyToOne(fetch = FetchType.LAZY)
     private Shop shop;
+
+    @Override
+    public String toString() {
+        return "Item{" +
+                "id=" + getId() +
+                "name='" + name + '\'' +
+                ", description='" + description + '\'' +
+                ", price=" + price +
+                ", stock=" + stock +
+                "}";
+    }
 }
