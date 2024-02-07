@@ -1,6 +1,8 @@
 package com.example.querydsl;
 
 import com.example.querydsl.dto.ItemDto;
+import com.example.querydsl.dto.ItemDtoProj;
+import com.example.querydsl.dto.QItemDtoProj;
 import com.example.querydsl.entity.Item;
 import com.example.querydsl.entity.Shop;
 import com.example.querydsl.repo.ItemRepository;
@@ -196,6 +198,23 @@ public class QuerydslProjTests {
                         item.stock.isNotNull()
                 )
                 .fetch();
+        itemDtoList.forEach(System.out::println);
+    }
+
+    @Test
+    public void queryProjection() {
+        List<ItemDtoProj> itemDtoList = queryFactory
+                // 만들어진 QDto의 생성자를 호출함으로서
+                // 결과를 Dto로 받을 수 있다.
+                .select(new QItemDtoProj(
+                        item.name,
+                        item.price,
+                        item.stock
+                ))
+                .from(item)
+                .where(item.name.isNotNull())
+                .fetch();
+
         itemDtoList.forEach(System.out::println);
     }
 }
