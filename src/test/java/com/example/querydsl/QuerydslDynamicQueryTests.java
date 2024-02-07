@@ -1,10 +1,13 @@
 package com.example.querydsl;
 
 import com.example.querydsl.dto.ItemDto;
+import com.example.querydsl.dto.ItemDtoProj;
+import com.example.querydsl.dto.QItemDtoProj;
 import com.example.querydsl.entity.Item;
 import com.example.querydsl.entity.Shop;
 import com.example.querydsl.repo.ItemRepository;
 import com.example.querydsl.repo.ShopRepository;
+import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -34,16 +37,10 @@ public class QuerydslDynamicQueryTests {
     private ShopRepository shopRepository;
     @Autowired
     private JPAQueryFactory queryFactory;
-    @Autowired
-    private EntityManager entityManager;
-    @Autowired
-    private EntityManagerFactory managerFactory;
-    private PersistenceUnitUtil unitUtil;
 
     // @BeforeEach: 각 테스트 전에 실행할 코드를 작성하는 영역
     @BeforeEach
     public void beforeEach() {
-        unitUtil = managerFactory.getPersistenceUnitUtil();
         Shop shopA = shopRepository.save(Shop.builder()
                 .name("shopA")
                 .description("shop A description")
@@ -101,5 +98,45 @@ public class QuerydslDynamicQueryTests {
         Integer price = 5000;
         Integer stock = 20;
 
+        results = booleanBuilder(name, price, stock);
+        results.forEach(System.out::println);
+
+        results = booleanBuilder(name, null, null);
+        results.forEach(System.out::println);
+
+        results = booleanBuilder(null, null, stock);
+        results.forEach(System.out::println);
+
+        results = booleanBuilder(null, price, stock);
+        results.forEach(System.out::println);
+
+        results = booleanBuilder(null, null, null);
+        results.forEach(System.out::println);
+    }
+
+    public List<Item> booleanBuilder(
+            String name,
+            Integer price,
+            Integer stock
+    ) {
+        // 1. BooleanBuilder: 여러 조건을 엮어서 하나의 조건으로 만들어진
+        //                    BooleanBuilder를 사용하는 방법
+        //                    생성자에 초기 조건 상정 가능
+        BooleanBuilder booleanBuilder = new BooleanBuilder(item.name.isNotNull());
+        // 여태까지 누적된 조건에 대하여, 주어진 조건을 AND로 엮는다.
+        if (name != null)
+            // (여태까지의 조건) AND i.name = name
+            booleanBuilder.and(item.name.eq(name));
+        if (price != null)
+            // (여태까지의 조건) AND i.price = price
+            booleanBuilder.and(item.price.eq(price));
+        if (stock != null)
+            // (여태까지의 조건) AND i.stock = stock
+            booleanBuilder.and(item.stock.eq(stock));
+
+        return queryFactory
+                .selectFrom(item)
+                .where(booleanBuilder)
+                .fetch();
     }
 }
