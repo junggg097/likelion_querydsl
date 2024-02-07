@@ -6,8 +6,5 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 
-public interface ItemRepository extends JpaRepository<Item, Long> {
-    //
-    @Query("SELECT i FROM Item i")
-    List<Item> findWithJpql();
-}
+public interface ItemRepository
+        extends JpaRepository<Item, Long>, ItemQuerydslRepo {}
