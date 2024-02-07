@@ -1,19 +1,12 @@
 package com.example.querydsl;
 
-import com.example.querydsl.dto.ItemDto;
-import com.example.querydsl.dto.ItemDtoProj;
-import com.example.querydsl.dto.QItemDtoProj;
 import com.example.querydsl.entity.Item;
 import com.example.querydsl.entity.Shop;
 import com.example.querydsl.repo.ItemRepository;
 import com.example.querydsl.repo.ShopRepository;
 import com.querydsl.core.BooleanBuilder;
-import com.querydsl.core.Tuple;
-import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.PersistenceUnitUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,8 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 import static com.example.querydsl.entity.QItem.item;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 @Transactional
 @SpringBootTest
@@ -65,19 +56,19 @@ public class QuerydslDynamicQueryTests {
                         .shop(shopA)
                         .name("itemB")
                         .price(6000)
-                        .stock(30)
+                        .stock(0)
                         .build(),
                 Item.builder()
                         .shop(shopB)
                         .name("itemC")
                         .price(8000)
-                        .stock(40)
+                        .stock(0)
                         .build(),
                 Item.builder()
                         .shop(shopB)
                         .name("itemD")
                         .price(10000)
-                        .stock(50)
+                        .stock(0)
                         .build(),
                 Item.builder()
                         .name("itemE")
@@ -98,7 +89,7 @@ public class QuerydslDynamicQueryTests {
         Integer price = 5000;
         Integer stock = 20;
 
-        results = booleanBuilder(name, price, stock);
+        /* results = booleanBuilder(name, price, stock);
         results.forEach(System.out::println);
 
         results = booleanBuilder(name, null, null);
@@ -112,6 +103,32 @@ public class QuerydslDynamicQueryTests {
 
         results = booleanBuilder(null, null, null);
         results.forEach(System.out::println);
+
+         */
+        // ---------------------
+        results = booleanExpressions(name, price, stock);
+        results.forEach(System.out::println);
+
+        results = booleanExpressions(name, null, null);
+        results.forEach(System.out::println);
+
+        results = booleanExpressions(null, null, stock);
+        results.forEach(System.out::println);
+
+        results = booleanExpressions(null, price, stock);
+        results.forEach(System.out::println);
+
+        results = booleanExpressions(null, null, null);
+        results.forEach(System.out::println);
+
+        // reusing expressions
+        results = goeOrLoeOrBetween(6000, null);
+        results.forEach(System.out::println);
+        results = goeOrLoeOrBetween(null, 6000);
+        results.forEach(System.out::println);
+        results = goeOrLoeOrBetween(5500, 7500);
+        results.forEach(System.out::println);
+
     }
 
     public List<Item> booleanBuilder(
@@ -138,5 +155,85 @@ public class QuerydslDynamicQueryTests {
                 .selectFrom(item)
                 .where(booleanBuilder)
                 .fetch();
+    }
+    public List<Item> goeOrLoeOrBetween(
+            Integer priceFloor,
+            Integer priceCeil,
+            boolean isAvailable
+    ) {
+        return queryFactory
+                .selectFrom(item)
+                .where(
+                        priceBetween(priceFloor, priceCeil),
+                        isAvailable(isAvailable)
+                )
+                .fetch();
+    }
+
+    private BooleanExpression isAvailable(boolean flag) {
+        return flag ? item.stock.goe(1) : null;
+    }
+
+    public List<Item> goeOrLoeOrBetween(
+            // 둘다 있으면 사잇값
+            // 하나만 있으면, floor는 최솟값, ceil은 최댓값
+            Integer priceFloor,
+            Integer priceCeil
+    ) {
+        return goeOrLoeOrBetween(priceFloor, priceCeil, true);
+        /*return queryFactory
+                .selectFrom(item)
+                .where(priceBetween(priceFloor, priceCeil))
+                .fetch();*/
+    }
+
+    // 조건을 나타내는 메서드를 만드는 것이기 때문에
+    // 조건의 재활용이 간편하다.
+    private BooleanExpression priceBetween(Integer floor, Integer ceil) {
+        if (floor == null && ceil == null) return null;
+        if (floor == null) return priceLoe(ceil);
+        if (ceil == null) return priceGoe(floor);
+        return item.price.between(floor, ceil);
+    }
+
+    private BooleanExpression priceLoe(Integer price) {
+        return price != null ? item.price.loe(price) : null;
+    }
+
+    private BooleanExpression priceGoe(Integer price) {
+        return price != null ? item.price.goe(price) : null;
+    }
+
+    public List<Item> booleanExpressions(
+            String name,
+            Integer price,
+            Integer stock
+    ) {
+        return queryFactory
+                .selectFrom(item)
+                .where(
+                        // 아래와 같이 결과가 나오게끔 하고싶은데,
+                        // 단 인자가 null 이라면 들어가지 않게끔
+                        // -> where 메서드는 null을 인자로 받으면 무시한다.
+                        nameEquals(name),
+                        priceEquals(price),
+                        stockEquals(stock)
+                )
+                .fetch();
+    }
+
+    private BooleanExpression nameEquals(String name) {
+        return name != null ? item.name.eq(name) : null;
+
+//        if (name != null) return item.name.eq(name);
+//        return null;
+    }
+
+    private BooleanExpression priceEquals(Integer price) {
+        return price != null ? item.price.eq(price) : null;
+    }
+
+    private BooleanExpression stockEquals(Integer stock) {
+        return stock != null ? item.stock.eq(stock) : null;
     }
 }
